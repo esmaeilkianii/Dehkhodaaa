@@ -1,0 +1,1157 @@
+<!DOCTYPE html>
+<html lang="en" >
+<head>
+  <meta charset="UTF-8">
+  <title>Untitled</title>
+  
+
+</head>
+<body>
+<!-- partial:index.partial.html -->
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>داشبورد مدیریت مزارع نیشکر</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.css" />
+    <style>
+        /* General Resets and Base Styles */
+        :root {
+            --primary-color: #3498db; /* A classic, clean blue */
+            --primary-dark: #2980b9;
+            --secondary-color: #50e3c2; /* A minty green for accents */
+            --text-dark: #2c3e50;
+            --text-light: #8a9aab;
+            --bg-light: #f4f6f9; /* Lighter, cleaner background */
+            --white: #ffffff;
+            --border-color: #e0e6ed;
+            --shadow: 0 5px 20px rgba(44, 62, 80, 0.1);
+            --shadow-light: 0 3px 10px rgba(44, 62, 80, 0.07);
+            --border-radius-md: 12px;
+            --border-radius-sm: 8px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Vazirmatn', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            min-height: 100vh;
+            color: var(--text-dark);
+            background-color: var(--bg-light);
+            overflow: hidden; /* Prevent body scroll */
+        }
+
+        /* Dashboard Layout */
+        .dashboard-container {
+            height: 100vh;
+            width: 100%;
+            position: relative;
+        }
+
+        /* --- Control Panel --- */
+        .control-panel {
+            background: var(--white);
+            padding: 25px;
+            box-shadow: var(--shadow);
+            overflow-y: auto;
+            position: fixed;
+            top: 0;
+            right: 0;
+            height: 100vh;
+            width: 400px;
+            max-width: 90%;
+            z-index: 2000;
+            transform: translateX(100%);
+            transition: transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            border-left: 1px solid var(--border-color);
+        }
+
+        .control-panel.open {
+            transform: translateX(0);
+        }
+        
+        /* --- Panel Toggle Button --- */
+        .panel-toggle-btn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            width: 50px;
+            height: 50px;
+            background: var(--primary-color);
+            color: var(--white);
+            border-radius: 50%;
+            border: none;
+            box-shadow: var(--shadow-light);
+            font-size: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 2001; /* Above the panel */
+            transition: all 0.3s ease;
+        }
+
+        .panel-toggle-btn:hover {
+            transform: scale(1.05) translateY(-2px);
+            background-color: var(--primary-dark);
+        }
+        
+        .control-panel.open + .map-container .panel-toggle-btn {
+            transform: translateX(-420px); /* Panel width + 20px padding */
+        }
+        
+        .panel-header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid var(--border-color);
+            position: relative;
+        }
+
+        .panel-header h1 {
+            color: var(--text-dark);
+            font-size: 22px;
+            margin-bottom: 8px;
+            font-weight: 700;
+        }
+
+        .panel-header p {
+            color: var(--text-light);
+            font-size: 14px;
+        }
+
+        .filter-section {
+            margin-bottom: 25px;
+            background: var(--bg-light);
+            padding: 15px;
+            border-radius: var(--border-radius-md);
+            border: 1px solid var(--border-color);
+        }
+
+        .filter-section h3 {
+            color: var(--text-dark);
+            margin-bottom: 15px;
+            font-size: 16px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .filter-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .filter-btn {
+            padding: 8px 16px;
+            border: 1px solid var(--border-color);
+            background: var(--white);
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-dark);
+        }
+
+        .filter-btn:hover {
+            transform: translateY(-1px);
+            border-color: var(--primary-color);
+            color: var(--primary-color);
+        }
+
+        .filter-btn.active {
+            background: var(--primary-color);
+            color: var(--white);
+            border-color: var(--primary-color);
+            transform: translateY(0);
+        }
+        
+        .location-btn {
+            width: 100%;
+            padding: 14px;
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: var(--border-radius-sm);
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+        
+        .location-btn:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+            background: #bdc3c7;
+        }
+
+        .location-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            background: var(--primary-dark);
+        }
+        
+        /* Stats Grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        .stat-card {
+            background: var(--white);
+            padding: 20px;
+            border-radius: var(--border-radius-md);
+            text-align: center;
+            border: 1px solid var(--border-color);
+            transition: all 0.3s ease;
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-3px);
+            box-shadow: var(--shadow-light);
+            border-color: var(--primary-color);
+        }
+
+        .stat-number {
+            font-size: 26px;
+            font-weight: 700;
+            color: var(--primary-color);
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: var(--text-light);
+            font-weight: 500;
+        }
+
+        /* --- Map Container & Overlays --- */
+        .map-container {
+            width: 100%;
+            height: 100%;
+            position: relative;
+        }
+        
+        #map {
+            height: 100%;
+            width: 100%;
+            background-color: var(--bg-light);
+        }
+        
+        .crosshair-cursor {
+            cursor: crosshair !important;
+        }
+
+        /* --- Search Overlay --- */
+        .search-overlay {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1000;
+            width: 400px;
+            max-width: 90%;
+        }
+
+        .search-container {
+            position: relative;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 15px 50px 15px 25px;
+            border: 1px solid var(--border-color);
+            border-radius: 25px;
+            font-size: 14px;
+            outline: none;
+            box-shadow: var(--shadow-light);
+            transition: all 0.3s ease;
+        }
+        
+        .search-input:focus {
+            box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.3);
+            border-color: var(--primary-color);
+        }
+        
+        .search-icon {
+            position: absolute;
+            right: 25px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-light);
+        }
+
+        /* --- FAB & Markers --- */
+        .location-fab {
+            position: absolute;
+            bottom: 30px;
+            left: 30px;
+            width: 55px;
+            height: 55px;
+            background-color: var(--primary-color);
+            color: white;
+            border-radius: 50%;
+            border: none;
+            box-shadow: var(--shadow-light);
+            font-size: 22px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 1000;
+            transition: all 0.3s ease;
+        }
+
+        .location-fab:hover {
+            background-color: var(--primary-dark);
+            transform: translateY(-2px) scale(1.05);
+        }
+        
+        .user-location-marker {
+            background-color: #3498db;
+            border: 3px solid white;
+            border-radius: 50%;
+            width: 25px;
+            height: 25px;
+            box-shadow: 0 0 12px rgba(52, 152, 219, 0.9);
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(52, 152, 219, 0.7); }
+            70% { box-shadow: 0 0 0 15px rgba(52, 152, 219, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(52, 152, 219, 0); }
+        }
+
+        /* --- Routing Panel & Summary --- */
+        .leaflet-routing-container {
+            display: none !important;
+        }
+        
+        .route-summary-card {
+            position: absolute;
+            top: 90px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--white);
+            color: var(--text-dark);
+            padding: 15px;
+            border-radius: var(--border-radius-md);
+            box-shadow: var(--shadow);
+            z-index: 1000;
+            width: 300px;
+            font-family: inherit;
+            transition: all 0.3s ease;
+            border: 1px solid var(--border-color);
+        }
+        .route-summary-card h4 {
+            margin: 0 0 15px 0;
+            text-align: center;
+            font-size: 16px;
+            font-weight: 600;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        .summary-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 14px;
+            margin-bottom: 10px;
+        }
+        .summary-item i {
+            font-size: 18px;
+            width: 22px;
+            text-align: center;
+            color: var(--primary-color);
+        }
+        #close-summary-btn {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background: none;
+            border: none;
+            color: var(--text-light);
+            font-size: 22px;
+            cursor: pointer;
+            padding: 5px;
+            line-height: 1;
+        }
+        
+        /* Map Legend */
+        .map-overlay {
+            position: absolute;
+            bottom: 30px;
+            right: 30px;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 15px;
+            border-radius: var(--border-radius-md);
+            box-shadow: var(--shadow-light);
+            z-index: 1000;
+        }
+
+        .legend { display: flex; flex-direction: column; gap: 10px; }
+        .legend-item { display: flex; align-items: center; gap: 10px; font-size: 12px; }
+        .legend-color { width: 20px; height: 20px; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2); }
+        
+        /* Farm Markers & Popups */
+        .custom-marker {
+            border-radius: 50%;
+            width: 28px;
+            height: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+            border: 2px solid white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .custom-marker:hover { transform: scale(1.15); }
+
+        .group-1 { background-color: #e74c3c; }
+        .group-2 { background-color: #3498db; }
+        .group-3 { background-color: #f1c40f; }
+        .group-4 { background-color: #9b59b6; }
+        
+        .leaflet-popup-content-wrapper { border-radius: var(--border-radius-md); box-shadow: var(--shadow); }
+        .leaflet-popup-content { width: auto !important; padding: 0 !important; }
+        .popup-content { text-align: right; padding: 15px; }
+
+        .popup-content h4 {
+            color: var(--text-dark);
+            margin-bottom: 15px;
+            font-size: 16px;
+            font-weight: 600;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 10px;
+        }
+
+        .popup-info { display: flex; flex-direction: column; gap: 8px; font-size: 13px; color: var(--text-light); }
+        .popup-info div { display: flex; align-items: center; gap: 8px; }
+        .popup-info i { color: var(--primary-color); }
+        
+        .route-btn {
+            margin-top: 15px;
+            padding: 10px 18px;
+            width: 100%;
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: var(--border-radius-sm);
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            transition: all 0.2s ease;
+        }
+
+        .route-btn:hover { background: var(--primary-dark); transform: translateY(-1px); }
+
+        /* Loading Spinner */
+        .loading {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+            z-index: 10000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            gap: 15px;
+            font-size: 16px;
+            color: var(--text-dark);
+        }
+        
+        .loading.show { display: flex; }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid var(--primary-color);
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* Responsiveness & Mobile Optimizations */
+        @media (max-width: 768px) {
+            .control-panel { width: 95%; max-width: 350px; }
+            .control-panel.open + .map-container .panel-toggle-btn {
+                transform: translateX(calc(-100vw + 30px));
+            }
+            .search-overlay, .route-summary-card { width: 90%; }
+            .location-fab { left: 20px; bottom: 20px; }
+            .map-overlay { right: 20px; bottom: 20px; }
+
+            /* Reduce heavy effects for mobile performance */
+            .control-panel, .search-input, .location-fab, .route-summary-card, .leaflet-popup-content-wrapper, .stat-card:hover {
+                box-shadow: none;
+            }
+            .user-location-marker {
+                animation: none; /* Disable pulse animation */
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="loading" id="loading">
+        <div class="spinner"></div>
+        <div>در حال پردازش...</div>
+    </div>
+
+    <div class="dashboard-container">
+        <div class="control-panel" id="controlPanel">
+            <div class="panel-header">
+                <h1><i class="fas fa-seedling" style="color: var(--primary-color);"></i>Crop Log Router</h1>
+                <p class="subtitle">فیلتر و مدیریت داده‌ها</p>
+            </div>
+
+            <div class="filter-section">
+                <h3><i class="fas fa-calendar-week"></i> فیلتر بر اساس روز هفته</h3>
+                <div class="filter-buttons" id="dayFilters">
+                    <button class="filter-btn active" data-day="all">همه روزها</button>
+                    <button class="filter-btn" data-day="شنبه">شنبه</button>
+                    <button class="filter-btn" data-day="یکشنبه">یکشنبه</button>
+                    <button class="filter-btn" data-day="دوشنبه">دوشنبه</button>
+                    <button class="filter-btn" data-day="سه شنبه">سه شنبه</button>
+                    <button class="filter-btn" data-day="چهارشنبه">چهارشنبه</button>
+                    <button class="filter-btn" data-day="پنجشنبه">پنجشنبه</button>
+                    <button class="filter-btn" data-day="جمعه">جمعه</button>
+                </div>
+            </div>
+
+            <div class="filter-section">
+                <h3><i class="fas fa-layer-group"></i> فیلتر بر اساس گروه</h3>
+                <div class="filter-buttons" id="groupFilters">
+                    <button class="filter-btn active" data-group="all">همه گروه‌ها</button>
+                    <button class="filter-btn" data-group="1">گروه ۱</button>
+                    <button class="filter-btn" data-group="2">گروه ۲</button>
+                    <button class="filter-btn" data-group="3">گروه ۳</button>
+                    <button class="filter-btn" data-group="4">گروه ۴</button>
+                </div>
+            </div>
+            
+            <div class="filter-section">
+                <h3><i class="fas fa-route"></i> کنترل مسیریابی</h3>
+                <p style="font-size: 13px; color: #7f8c8d; margin-bottom: 15px; line-height: 1.6;">
+                    برای مسیریابی، ابتدا مبدا خود را با دکمه <i class="fas fa-location-crosshairs"></i> یا انتخاب روی نقشه مشخص کنید.
+                </p>
+                <button class="location-btn" id="setOriginBtn">
+                    <i class="fas fa-map-pin"></i>
+                    انتخاب مبدا روی نقشه
+                </button>
+            </div>
+
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-number" id="totalFarms">0</div>
+                    <div class="stat-label">کل مزارع</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="visibleFarms">0</div>
+                    <div class="stat-label">مزارع نمایان</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="activeGroups">0</div>
+                    <div class="stat-label">گروه‌های فعال</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="weekDays">0</div>
+                    <div class="stat-label">روزهای پایش</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="map-container">
+             <button class="panel-toggle-btn" id="panelToggleBtn" title="نمایش پنل فیلتر">
+                <i class="fas fa-sliders-h"></i>
+            </button>
+            <div class="search-overlay">
+                <div class="search-container">
+                    <input type="text" class="search-input" id="farmSearch" placeholder="جستجوی نام مزرعه برای مسیریابی...">
+                    <i class="fas fa-search search-icon"></i>
+                </div>
+            </div>
+            <div id="route-summary" class="route-summary-card" style="display: none;">
+                <h4><i class="fas fa-route"></i> خلاصه مسیر</h4>
+                <div class="summary-item">
+                    <i class="fas fa-road"></i>
+                    <span id="route-distance"></span>
+                </div>
+                <div class="summary-item">
+                    <i class="fas fa-stopwatch"></i>
+                    <span id="route-time"></span>
+                </div>
+                <button id="close-summary-btn" title="بستن">&times;</button>
+            </div>
+            <div class="map-overlay">
+                <div class="legend">
+                    <div class="legend-item"><div class="legend-color group-1"></div><span>گروه ۱</span></div>
+                    <div class="legend-item"><div class="legend-color group-2"></div><span>گروه ۲</span></div>
+                    <div class="legend-item"><div class="legend-color group-3"></div><span>گروه ۳</span></div>
+                    <div class="legend-item"><div class="legend-color group-4"></div><span>گروه ۴</span></div>
+                </div>
+            </div>
+            <div id="map"></div>
+            <button class="location-fab" id="findMeBtn" title="موقعیت من">
+                <i class="fas fa-location-crosshairs"></i>
+            </button>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.min.js"></script>
+
+    <script>
+        // --- DATA ---
+        const farmsData = { /* YOUR PROVIDED JSON DATA GOES HERE */
+        "01-22": {"روز": "شنبه", "گروه": 1, "longitude": 48.775708, "latitude": 31.593218},
+        "01-28": {"روز": "شنبه", "گروه": 1, "longitude": 48.785815, "latitude": 31.592482},
+        "02-03": {"روز": "شنبه", "گروه": 2, "longitude": 48.742486, "latitude": 31.596457},
+        "02-13": {"روز": "شنبه", "گروه": 2, "longitude": 48.729089, "latitude": 31.597671},
+        "02-19": {"روز": "شنبه", "گروه": 2, "longitude": 48.723132, "latitude": 31.5984},
+        "02-27": {"روز": "شنبه", "گروه": 2, "longitude": 48.712418, "latitude": 31.599372},
+        "03-08": {"روز": "شنبه", "گروه": 1, "longitude": 48.757886, "latitude": 31.58573},
+        "03-16": {"روز": "شنبه", "گروه": 1, "longitude": 48.766544, "latitude": 31.584765},
+        "03-18": {"روز": "شنبه", "گروه": 1, "longitude": 48.769229, "latitude": 31.584519},
+        "03-22": {"روز": "شنبه", "گروه": 1, "longitude": 48.774562, "latitude": 31.584025},
+        "03-30": {"روز": "یکشنبه", "گروه": 1, "longitude": 48.78511, "latitude": 31.583048},
+        "03-32": {"روز": "یکشنبه", "گروه": 1, "longitude": 48.78769, "latitude": 31.582802},
+        "04-01": {"روز": "یکشنبه", "گروه": 2, "longitude": 48.744039, "latitude": 31.586804},
+        "04-03": {"روز": "یکشنبه", "گروه": 2, "longitude": 48.741306, "latitude": 31.587052},
+        "04-05": {"روز": "یکشنبه", "گروه": 2, "longitude": 48.738659, "latitude": 31.587293},
+        "04-11": {"روز": "شنبه", "گروه": 2, "longitude": 48.732634, "latitude": 31.588026},
+        "04-15": {"روز": "شنبه", "گروه": 2, "longitude": 48.727248, "latitude": 31.588536},
+        "05-01": {"روز": "یکشنبه", "گروه": 1, "longitude": 48.746612, "latitude": 31.57751},
+        "05-06": {"روز": "دوشنبه", "گروه": 1, "longitude": 48.750875, "latitude": 31.567808},
+        "05-07": {"روز": "یکشنبه", "گروه": 1, "longitude": 48.75473, "latitude": 31.576771},
+        "05-10": {"روز": "دوشنبه", "گروه": 1, "longitude": 48.756231, "latitude": 31.56732},
+        "05-11": {"روز": "یکشنبه", "گروه": 1, "longitude": 48.760087, "latitude": 31.576284},
+        "05-15": {"روز": "یکشنبه", "گروه": 1, "longitude": 48.765431, "latitude": 31.575806},
+        "05-16": {"روز": "دوشنبه", "گروه": 1, "longitude": 48.76419, "latitude": 31.566614},
+        "05-18": {"روز": "دوشنبه", "گروه": 1, "longitude": 48.76699, "latitude": 31.566357},
+        "05-19": {"روز": "یکشنبه", "گروه": 1, "longitude": 48.772838, "latitude": 31.575307},
+        "05-20": {"روز": "دوشنبه", "گروه": 1, "longitude": 48.769651, "latitude": 31.566097},
+        "05-22": {"روز": "دوشنبه", "گروه": 1, "longitude": 48.774337, "latitude": 31.565856},
+        "05-30": {"روز": "دوشنبه", "گروه": 1, "longitude": 48.785005, "latitude": 31.564851},
+        "06-02": {"روز": "یکشنبه", "گروه": 2, "longitude": 48.742926, "latitude": 31.577845},
+        "06-03": {"روز": "دوشنبه", "گروه": 2, "longitude": 48.739048, "latitude": 31.568883},
+        "06-04": {"روز": "یکشنبه", "گروه": 2, "longitude": 48.740192, "latitude": 31.578093},
+        "06-05": {"روز": "دوشنبه", "گروه": 2, "longitude": 48.736401, "latitude": 31.569123},
+        "06-10": {"روز": "یکشنبه", "گروه": 2, "longitude": 48.73423, "latitude": 31.57882},
+        "06-11": {"روز": "دوشنبه", "گروه": 2, "longitude": 48.728336, "latitude": 31.569856},
+        "06-12": {"روز": "یکشنبه", "گروه": 2, "longitude": 48.729479, "latitude": 31.579067},
+        "06-16": {"روز": "دوشنبه", "گروه": 2, "longitude": 48.724209, "latitude": 31.57953},
+        "06-18": {"روز": "دوشنبه", "گروه": 2, "longitude": 48.721473, "latitude": 31.579815},
+        "07-08": {"روز": "سه شنبه", "گروه": 1, "longitude": 48.752442, "latitude": 31.558382},
+        "07-10": {"روز": "سه شنبه", "گروه": 1, "longitude": 48.75483, "latitude": 31.558141},
+        "07-12": {"روز": "سه شنبه", "گروه": 1, "longitude": 48.757797, "latitude": 31.557894},
+        "07-18": {"روز": "سه شنبه", "گروه": 1, "longitude": 48.767829, "latitude": 31.557159},
+        "08-01": {"روز": "دوشنبه", "گروه": 2, "longitude": 48.740637, "latitude": 31.559433},
+        "08-09": {"روز": "دوشنبه", "گروه": 2, "longitude": 48.729903, "latitude": 31.560409},
+        "08-17": {"روز": "سه شنبه", "گروه": 2, "longitude": 48.71921, "latitude": 31.561368},
+        "08-19": {"روز": "سه شنبه", "گروه": 2, "longitude": 48.71642, "latitude": 31.561628},
+        "08-25": {"روز": "سه شنبه", "گروه": 2, "longitude": 48.710524, "latitude": 31.562353},
+        "09-04": {"روز": "چهارشنبه", "گروه": 1, "longitude": 48.745934, "latitude": 31.549596},
+        "09-08": {"روز": "چهارشنبه", "گروه": 1, "longitude": 48.751289, "latitude": 31.549109},
+        "09-14": {"روز": "سه شنبه", "گروه": 1, "longitude": 48.759289, "latitude": 31.54838},
+        "09-16": {"روز": "سه شنبه", "گروه": 1, "longitude": 48.762068, "latitude": 31.54815},
+        "09-20": {"روز": "سه شنبه", "گروه": 1, "longitude": 48.7694, "latitude": 31.547645},
+        "10-01": {"روز": "سه شنبه", "گروه": 2, "longitude": 48.739487, "latitude": 31.550182},
+        "10-11": {"روز": "سه شنبه", "گروه": 2, "longitude": 48.726045, "latitude": 31.551404},
+        "10-13": {"روز": "سه شنبه", "گروه": 2, "longitude": 48.723399, "latitude": 31.551644},
+        "10-15": {"روز": "سه شنبه", "گروه": 2, "longitude": 48.72078, "latitude": 31.551891},
+        "10-23": {"روز": "سه شنبه", "گروه": 2, "longitude": 48.70998, "latitude": 31.552862},
+        "11-06": {"روز": "پنجشنبه", "گروه": 1, "longitude": 48.747445, "latitude": 31.540226},
+        "11-12": {"روز": "پنجشنبه", "گروه": 1, "longitude": 48.757481, "latitude": 31.539474},
+        "11-16": {"روز": "چهارشنبه", "گروه": 1, "longitude": 48.760917, "latitude": 31.539002},
+        "11-18": {"روز": "چهارشنبه", "گروه": 1, "longitude": 48.763639, "latitude": 31.538713},
+        "11-20": {"روز": "چهارشنبه", "گروه": 1, "longitude": 48.766215, "latitude": 31.538516},
+        "11-22": {"روز": "چهارشنبه", "گروه": 1, "longitude": 48.768861, "latitude": 31.538274},
+        "11-26": {"روز": "چهارشنبه", "گروه": 1, "longitude": 48.774215, "latitude": 31.537786},
+        "12-04": {"روز": "چهارشنبه", "گروه": 2, "longitude": 48.735634, "latitude": 31.541404},
+        "12-06": {"روز": "چهارشنبه", "گروه": 2, "longitude": 48.732988, "latitude": 31.541645},
+        "12-12": {"روز": "چهارشنبه", "گروه": 2, "longitude": 48.724925, "latitude": 31.542377},
+        "12-13": {"روز": "چهارشنبه", "گروه": 2, "longitude": 48.721146, "latitude": 31.533382},
+        "12-15": {"روز": "چهارشنبه", "گروه": 2, "longitude": 48.718469, "latitude": 31.533411},
+        "12-21": {"روز": "چهارشنبه", "گروه": 2, "longitude": 48.710425, "latitude": 31.534343},
+        "12-24": {"روز": "چهارشنبه", "گروه": 2, "longitude": 48.710907, "latitude": 31.543836},
+        "12-27": {"روز": "چهارشنبه", "گروه": 2, "longitude": 48.704405, "latitude": 31.535621},
+        "13-04": {"روز": "پنجشنبه", "گروه": 1, "longitude": 48.743665, "latitude": 31.531346},
+        "13-10": {"روز": "پنجشنبه", "گروه": 1, "longitude": 48.751664, "latitude": 31.530617},
+        "13-22": {"روز": "پنجشنبه", "گروه": 1, "longitude": 48.767725, "latitude": 31.529154},
+        "14-02": {"روز": "شنبه", "گروه": 4, "longitude": 48.7361, "latitude": 31.522914},
+        "14-07": {"روز": "شنبه", "گروه": 4, "longitude": 48.726867, "latitude": 31.514403},
+        "14-09": {"روز": "شنبه", "گروه": 4, "longitude": 48.724222, "latitude": 31.514643},
+        "14-16": {"روز": "شنبه", "گروه": 4, "longitude": 48.71725, "latitude": 31.524618},
+        "14-18": {"روز": "شنبه", "گروه": 4, "longitude": 48.71428, "latitude": 31.524866},
+        "14-19": {"روز": "شنبه", "گروه": 4, "longitude": 48.712853, "latitude": 31.515862},
+        "14-21": {"روز": "شنبه", "گروه": 4, "longitude": 48.710208, "latitude": 31.516102},
+        "14-24": {"روز": "شنبه", "گروه": 4, "longitude": 48.708646, "latitude": 31.525594},
+        "15-03": {"روز": "شنبه", "گروه": 3, "longitude": 48.742545, "latitude": 31.522328},
+        "15-04": {"روز": "شنبه", "گروه": 3, "longitude": 48.74142, "latitude": 31.513082},
+        "15-07": {"روز": "شنبه", "گروه": 3, "longitude": 48.747898, "latitude": 31.521841},
+        "15-08": {"روز": "یکشنبه", "گروه": 3, "longitude": 48.746748, "latitude": 31.512595},
+        "15-10": {"روز": "یکشنبه", "گروه": 3, "longitude": 48.749393, "latitude": 31.512354},
+        "15-11": {"روز": "شنبه", "گروه": 3, "longitude": 48.753251, "latitude": 31.521353},
+        "15-12": {"روز": "یکشنبه", "گروه": 3, "longitude": 48.75112, "latitude": 31.512081},
+        "15-17": {"روز": "شنبه", "گروه": 3, "longitude": 48.761367, "latitude": 31.520622},
+        "15-22": {"روز": "یکشنبه", "گروه": 3, "longitude": 48.76523, "latitude": 31.51089},
+        "15-24": {"روز": "یکشنبه", "گروه": 3, "longitude": 48.768158, "latitude": 31.510643},
+        "15-25": {"روز": "شنبه", "گروه": 3, "longitude": 48.771955, "latitude": 31.519648},
+        "15-27": {"روز": "شنبه", "گروه": 3, "longitude": 48.774229, "latitude": 31.519426},
+        "16-01": {"روز": "یکشنبه", "گروه": 4, "longitude": 48.73238, "latitude": 31.495441},
+        "16-03": {"روز": "یکشنبه", "گروه": 4, "longitude": 48.729957, "latitude": 31.495689},
+        "16-04": {"روز": "یکشنبه", "گروه": 4, "longitude": 48.731104, "latitude": 31.504929},
+        "16-07": {"روز": "یکشنبه", "گروه": 4, "longitude": 48.724606, "latitude": 31.496176},
+        "16-09": {"روز": "یکشنبه", "گروه": 4, "longitude": 48.721961, "latitude": 31.496416},
+        "16-12": {"روز": "یکشنبه", "گروه": 4, "longitude": 48.720399, "latitude": 31.505896},
+        "16-13": {"روز": "دوشنبه", "گروه": 4, "longitude": 48.718651, "latitude": 31.496902},
+        "16-22": {"روز": "یکشنبه", "گروه": 4, "longitude": 48.70705, "latitude": 31.507108},
+        "16-24": {"روز": "یکشنبه", "گروه": 4, "longitude": 48.704342, "latitude": 31.507354},
+        "16-27": {"روز": "دوشنبه", "گروه": 4, "longitude": 48.699892, "latitude": 31.498579},
+        "17-02": {"روز": "دوشنبه", "گروه": 3, "longitude": 48.738465, "latitude": 31.495104},
+        "17-08": {"روز": "دوشنبه", "گروه": 3, "longitude": 48.744482, "latitude": 31.494367},
+        "17-09": {"روز": "یکشنبه", "گروه": 3, "longitude": 48.74815, "latitude": 31.50336},
+        "17-11": {"روز": "یکشنبه", "گروه": 3, "longitude": 48.750982, "latitude": 31.503113},
+        "17-19": {"روز": "دوشنبه", "گروه": 3, "longitude": 48.761686, "latitude": 31.502138},
+        "17-24": {"روز": "دوشنبه", "گروه": 3, "longitude": 48.765867, "latitude": 31.492434},
+        "17-26": {"روز": "دوشنبه", "گروه": 3, "longitude": 48.768533, "latitude": 31.492175},
+        "17-27": {"روز": "دوشنبه", "گروه": 3, "longitude": 48.772324, "latitude": 31.500955},
+        "18-02": {"روز": "سه شنبه", "گروه": 4, "longitude": 48.731552, "latitude": 31.486458},
+        "18-03": {"روز": "سه شنبه", "گروه": 4, "longitude": 48.727697, "latitude": 31.477473},
+        "18-06": {"روز": "دوشنبه", "گروه": 4, "longitude": 48.726198, "latitude": 31.486947},
+        "18-10": {"روز": "دوشنبه", "گروه": 4, "longitude": 48.720847, "latitude": 31.487434},
+        "18-13": {"روز": "سه شنبه", "گروه": 4, "longitude": 48.714351, "latitude": 31.478686},
+        "18-16": {"روز": "دوشنبه", "گروه": 4, "longitude": 48.712832, "latitude": 31.488162},
+        "18-17": {"روز": "سه شنبه", "گروه": 4, "longitude": 48.708957, "latitude": 31.479176},
+        "18-18": {"روز": "دوشنبه", "گروه": 4, "longitude": 48.710101, "latitude": 31.48841},
+        "18-24": {"روز": "دوشنبه", "گروه": 4, "longitude": 48.704129, "latitude": 31.489137},
+        "18-26": {"روز": "دوشنبه", "گروه": 4, "longitude": 48.701485, "latitude": 31.489377},
+        "19-05": {"روز": "دوشنبه", "گروه": 3, "longitude": 48.740659, "latitude": 31.485631},
+        "19-04": {"روز": "چهارشنبه", "گروه": 3, "longitude": 48.736868, "latitude": 31.476638},
+        "19-08": {"روز": "چهارشنبه", "گروه": 3, "longitude": 48.742219, "latitude": 31.476151},
+        "19-13": {"روز": "سه شنبه", "گروه": 3, "longitude": 48.75113, "latitude": 31.484656},
+        "19-15": {"روز": "سه شنبه", "گروه": 3, "longitude": 48.754124, "latitude": 31.484399},
+        "19-18": {"روز": "سه شنبه", "گروه": 3, "longitude": 48.755699, "latitude": 31.47488},
+        "19-19": {"روز": "سه شنبه", "گروه": 3, "longitude": 48.759419, "latitude": 31.483922},
+        "19-21": {"روز": "سه شنبه", "گروه": 3, "longitude": 48.762063, "latitude": 31.483681},
+        "19-22": {"روز": "سه شنبه", "گروه": 3, "longitude": 48.762865, "latitude": 31.476455},
+        "19-23": {"روز": "سه شنبه", "گروه": 3, "longitude": 48.76477, "latitude": 31.483434},
+        "19-25": {"روز": "سه شنبه", "گروه": 3, "longitude": 48.767414, "latitude": 31.483192},
+        "20-05": {"روز": "چهارشنبه", "گروه": 4, "longitude": 48.724836, "latitude": 31.459515},
+        "20-06": {"روز": "چهارشنبه", "گروه": 4, "longitude": 48.723938, "latitude": 31.468731},
+        "20-08": {"روز": "چهارشنبه", "گروه": 4, "longitude": 48.721232, "latitude": 31.468977},
+        "20-09": {"روز": "چهارشنبه", "گروه": 4, "longitude": 48.717507, "latitude": 31.460276},
+        "20-12": {"روز": "چهارشنبه", "گروه": 4, "longitude": 48.715882, "latitude": 31.469463},
+        "20-13": {"روز": "چهارشنبه", "گروه": 4, "longitude": 48.714088, "latitude": 31.461797},
+        "20-14": {"روز": "چهارشنبه", "گروه": 4, "longitude": 48.713238, "latitude": 31.469703},
+        "20-24": {"روز": "سه شنبه", "گروه": 4, "longitude": 48.699831, "latitude": 31.470921},
+        "20-26": {"روز": "سه شنبه", "گروه": 4, "longitude": 48.697329, "latitude": 31.471161},
+        "20-28": {"روز": "سه شنبه", "گروه": 4, "longitude": 48.694473, "latitude": 31.471369},
+        "21-03": {"روز": "چهارشنبه", "گروه": 3, "longitude": 48.735753, "latitude": 31.467655},
+        "21-09": {"روز": "چهارشنبه", "گروه": 3, "longitude": 48.743747, "latitude": 31.466928},
+        "21-15": {"روز": "چهارشنبه", "گروه": 3, "longitude": 48.751786, "latitude": 31.466212},
+        "22-05": {"روز": "پنجشنبه", "گروه": 4, "longitude": 48.720865, "latitude": 31.449558},
+        "22-17": {"روز": "پنجشنبه", "گروه": 4, "longitude": 48.709737, "latitude": 31.45786},
+        "22-21": {"روز": "پنجشنبه", "گروه": 4, "longitude": 48.69896, "latitude": 31.46234},
+        "23-07": {"روز": "چهارشنبه", "گروه": 3, "longitude": 48.740853, "latitude": 31.449091},
+        "23-11": {"روز": "چهارشنبه", "گروه": 3, "longitude": 48.744078, "latitude": 31.448378},
+        "23-13": {"روز": "چهارشنبه", "گروه": 3, "longitude": 48.74688, "latitude": 31.450136},
+        "24-03": {"روز": "پنجشنبه", "گروه": 4, "longitude": 48.713667, "latitude": 31.43707},
+        "24-04": {"روز": "پنجشنبه", "گروه": 4, "longitude": 48.714569, "latitude": 31.445983},
+        "24-08": {"روز": "پنجشنبه", "گروه": 4, "longitude": 48.707391, "latitude": 31.447093},
+        "24-11": {"روز": "پنجشنبه", "گروه": 4, "longitude": 48.700694, "latitude": 31.438168},
+        "24-15": {"روز": "پنجشنبه", "گروه": 4, "longitude": 48.695322, "latitude": 31.438717},
+        "25-03": {"روز": "پنجشنبه", "گروه": 3, "longitude": 48.725837, "latitude": 31.444494},
+        "25-07": {"روز": "پنجشنبه", "گروه": 3, "longitude": 48.73025, "latitude": 31.442161},
+        "25-09": {"روز": "پنجشنبه", "گروه": 3, "longitude": 48.732391, "latitude": 31.44061},
+        "25-13": {"روز": "پنجشنبه", "گروه": 3, "longitude": 48.73790, "latitude": 31.43534},
+        "26-02": {"روز": "پنجشنبه", "گروه": 2, "longitude": 48.712792, "latitude": 31.427019},
+        "26-08": {"روز": "پنجشنبه", "گروه": 2, "longitude": 48.706911, "latitude": 31.427816},
+        "26-09": {"روز": "پنجشنبه", "گروه": 2, "longitude": 48.700919, "latitude": 31.419888},
+        "26-14": {"روز": "پنجشنبه", "گروه": 2, "longitude": 48.696682, "latitude": 31.428623},
+        "26-15": {"روز": "پنجشنبه", "گروه": 2, "longitude": 48.694788, "latitude": 31.420752},
+        "26-18": {"روز": "پنجشنبه", "گروه": 2, "longitude": 48.691303, "latitude": 31.429179},
+        "27-01": {"روز": "پنجشنبه", "گروه": 3, "longitude": 48.717987, "latitude": 31.437501},
+        "29-02": {"روز": "پنجشنبه", "گروه": 3, "longitude": 48.716572, "latitude": 31.418526}
+    };
+
+        // --- GLOBAL STATE & CACHE ---
+        let map;
+        let markersLayer;
+        let routingControl;
+        let currentFilters = { day: 'all', group: 'all' };
+        let routingOrigin = null; 
+        let originMarker = null; 
+        
+        // --- DOM Elements ---
+        const DOMElements = {
+            controlPanel: null,
+            panelToggleBtn: null,
+            loadingIndicator: null,
+            farmSearchInput: null,
+            dayFilterContainer: null,
+            groupFilterContainer: null,
+            setOriginBtn: null,
+            findMeBtn: null,
+            closeSummaryBtn: null,
+            routeSummaryCard: null,
+            routeDistanceEl: null,
+            routeTimeEl: null,
+            totalFarmsEl: null,
+            visibleFarmsEl: null,
+            activeGroupsEl: null,
+            weekDaysEl: null,
+        };
+
+        // --- INITIALIZATION ---
+        document.addEventListener('DOMContentLoaded', () => {
+            cacheDOMElements();
+            initMap();
+            setupEventListeners();
+            displayFarms(); // Initial display
+        });
+        
+        function cacheDOMElements() {
+            DOMElements.controlPanel = document.getElementById('controlPanel');
+            DOMElements.panelToggleBtn = document.getElementById('panelToggleBtn');
+            DOMElements.loadingIndicator = document.getElementById('loading');
+            DOMElements.farmSearchInput = document.getElementById('farmSearch');
+            DOMElements.dayFilterContainer = document.getElementById('dayFilters');
+            DOMElements.groupFilterContainer = document.getElementById('groupFilters');
+            DOMElements.setOriginBtn = document.getElementById('setOriginBtn');
+            DOMElements.findMeBtn = document.getElementById('findMeBtn');
+            DOMElements.closeSummaryBtn = document.getElementById('close-summary-btn');
+            DOMElements.routeSummaryCard = document.getElementById('route-summary');
+            DOMElements.routeDistanceEl = document.getElementById('route-distance');
+            DOMElements.routeTimeEl = document.getElementById('route-time');
+            DOMElements.totalFarmsEl = document.getElementById('totalFarms');
+            DOMElements.visibleFarmsEl = document.getElementById('visibleFarms');
+            DOMElements.activeGroupsEl = document.getElementById('activeGroups');
+            DOMElements.weekDaysEl = document.getElementById('weekDays');
+        }
+
+        function initMap() {
+            const esriImagery = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+                attribution: '&copy; Esri',
+                maxZoom: 19
+            });
+
+            const osmStreet = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; OpenStreetMap',
+                maxZoom: 19
+            });
+            
+            map = L.map('map', { 
+                zoomControl: false,
+                layers: [esriImagery] 
+            }).setView([31.5, 48.7], 11);
+
+            const baseMaps = {
+                "تصاویر ماهواره‌ای": esriImagery,
+                "نقشه خیابان‌ها": osmStreet
+            };
+
+            L.control.layers(baseMaps, null, { position: 'topleft' }).addTo(map);
+            L.control.zoom({ position: 'bottomright' }).addTo(map);
+            
+            markersLayer = L.layerGroup().addTo(map);
+        }
+
+        // --- MAP & MARKER FUNCTIONS ---
+        function createCustomMarker(farm, farmId) {
+            const markerHtml = `<div class="custom-marker group-${farm.گروه}">
+                <i class="fas fa-leaf" style="color: white; font-size: 12px;"></i>
+            </div>`;
+
+            const marker = L.marker([farm.latitude, farm.longitude], {
+                icon: L.divIcon({
+                    html: markerHtml,
+                    className: '',
+                    iconSize: [28, 28],
+                    iconAnchor: [14, 14]
+                })
+            });
+
+            // پاپ‌آپ ساده فقط با نام مزرعه و دکمه مسیریابی
+            const popupContent = `
+                <div style="text-align:center; padding:10px 0; min-width:120px;">
+                    <div style="font-weight:bold; font-size:15px; margin-bottom:8px;">${farmId}</div>
+                    <button class="route-btn" style="width:90%;margin:0 auto;display:block;" onclick="handleRouteButtonClick(${farm.latitude}, ${farm.longitude})">
+                        <i class="fas fa-route"></i> مسیریابی
+                    </button>
+                </div>`;
+
+            marker.bindPopup(popupContent, { minWidth: 120, maxWidth: 180 });
+
+            marker.on('popupopen', function(e) {
+                map.panBy([0, 80], {animate: true});
+            });
+
+            return marker;
+        }
+
+        function displayFarms() {
+            markersLayer.clearLayers();
+            const visibleFarms = Object.entries(farmsData).filter(([, farm]) => shouldShowFarm(farm));
+            
+            visibleFarms.forEach(([farmId, farm]) => {
+                const marker = createCustomMarker(farm, farmId);
+                markersLayer.addLayer(marker);
+            });
+            updateStats(visibleFarms);
+        }
+
+        // --- FILTERING & STATS ---
+        function shouldShowFarm(farm) {
+            const dayMatch = currentFilters.day === 'all' || farm.روز === currentFilters.day;
+            const groupMatch = currentFilters.group === 'all' || farm.گروه.toString() === currentFilters.group;
+            return dayMatch && groupMatch;
+        }
+
+        function updateStats(visibleFarms) {
+            const totalFarms = Object.keys(farmsData).length;
+            const visibleFarmsCount = visibleFarms.length;
+            
+            const activeGroups = new Set(visibleFarms.map(([, f]) => f.گروه)).size;
+            const weekDays = new Set(Object.values(farmsData).map(f => f.روز)).size;
+
+            DOMElements.totalFarmsEl.textContent = totalFarms;
+            DOMElements.visibleFarmsEl.textContent = visibleFarmsCount;
+            DOMElements.activeGroupsEl.textContent = activeGroups;
+            DOMElements.weekDaysEl.textContent = weekDays;
+        }
+        
+        // --- UI & EVENT HANDLERS ---
+        function setupEventListeners() {
+            DOMElements.panelToggleBtn.addEventListener('click', togglePanel);
+            
+            DOMElements.dayFilterContainer.addEventListener('click', (e) => handleFilterClick(e, 'day'));
+            DOMElements.groupFilterContainer.addEventListener('click', (e) => handleFilterClick(e, 'group'));
+            
+            DOMElements.farmSearchInput.addEventListener('keydown', handleSearch);
+
+            DOMElements.setOriginBtn.addEventListener('click', enableOriginSelection);
+            DOMElements.findMeBtn.addEventListener('click', findMeAndSetOrigin);
+            DOMElements.closeSummaryBtn.addEventListener('click', () => {
+                DOMElements.routeSummaryCard.style.display = 'none';
+            });
+        }
+        
+        function togglePanel() {
+            DOMElements.controlPanel.classList.toggle('open');
+            const icon = DOMElements.panelToggleBtn.querySelector('i');
+            if (DOMElements.controlPanel.classList.contains('open')) {
+                icon.className = 'fas fa-times';
+                DOMElements.panelToggleBtn.title = 'بستن پنل';
+            } else {
+                icon.className = 'fas fa-sliders-h';
+                DOMElements.panelToggleBtn.title = 'نمایش پنل فیلتر';
+            }
+        }
+        
+        function handleFilterClick(e, filterType) {
+            if (!e.target.classList.contains('filter-btn')) return;
+            
+            const container = filterType === 'day' ? DOMElements.dayFilterContainer : DOMElements.groupFilterContainer;
+            container.querySelector('.active').classList.remove('active');
+            e.target.classList.add('active');
+            
+            currentFilters[filterType] = e.target.dataset[filterType];
+            displayFarms();
+            
+            if (window.innerWidth <= 768) {
+                setTimeout(togglePanel, 300);
+            }
+        }
+        
+        function handleSearch(e) {
+            if (e.key !== 'Enter') return;
+            
+            const searchTerm = e.target.value.trim();
+            if (!searchTerm) return;
+            
+            if (farmsData[searchTerm]) {
+                const farm = farmsData[searchTerm];
+                map.setView([farm.latitude, farm.longitude], 15);
+                
+                // Find and open the popup for the searched farm
+                markersLayer.eachLayer(marker => {
+                    // This is a bit of a hack without storing farmId on the marker
+                    // A better way would be marker.farmId = farmId;
+                    if (marker.getLatLng().lat === farm.latitude && marker.getLatLng().lng === farm.longitude) {
+                        marker.openPopup();
+                        // The 'popupopen' event on the marker will handle panning.
+                        // The timeout here is redundant and removed for performance.
+                        handleRouteButtonClick(farm.latitude, farm.longitude);
+                    }
+                });
+            } else {
+                alert(`مزرعه با نام '${searchTerm}' یافت نشد.`);
+            }
+        }
+        
+        // This function is called from the popup button
+        function handleRouteButtonClick(lat, lng) {
+            if (!routingOrigin) {
+                alert('لطفا ابتدا مبدا را مشخص کنید. از دکمه موقعیت‌یاب یا انتخاب روی نقشه استفاده کنید.');
+                DOMElements.findMeBtn.style.transform = 'scale(1.2)';
+                DOMElements.findMeBtn.style.backgroundColor = '#f1c40f';
+                setTimeout(() => {
+                    DOMElements.findMeBtn.style.transform = '';
+                    DOMElements.findMeBtn.style.backgroundColor = '';
+                }, 1500);
+                return;
+            }
+            showRoute(lat, lng);
+        }
+
+        // --- GEOLOCATION & ROUTING ---
+        function showLoading(show) {
+             DOMElements.loadingIndicator.classList.toggle('show', show);
+        }
+        
+        function enableOriginSelection() {
+            const btn = DOMElements.setOriginBtn;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> روی نقشه کلیک کنید...';
+            btn.disabled = true;
+
+            L.DomUtil.addClass(map._container, 'crosshair-cursor');
+
+            map.once('click', function(e) {
+                setRoutingOrigin(e.latlng);
+                L.DomUtil.removeClass(map._container, 'crosshair-cursor');
+                btn.innerHTML = '<i class="fas fa-check"></i> مبدا انتخاب شد';
+                btn.disabled = false;
+                setTimeout(() => {
+                    btn.innerHTML = '<i class="fas fa-map-pin"></i> انتخاب مبدا روی نقشه';
+                }, 2500);
+            });
+        }
+        
+        function findMeAndSetOrigin() {
+            showLoading(true);
+            
+            const geoOptions = { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 };
+            
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    const latlng = L.latLng(position.coords.latitude, position.coords.longitude);
+                    setRoutingOrigin(latlng, true);
+                    map.setView(latlng, 14);
+                    showLoading(false);
+                },
+                (error) => {
+                    showLoading(false);
+                    const messages = {
+                        [error.PERMISSION_DENIED]: 'شما اجازه دسترسی به موقعیت مکانی را نداده‌اید.',
+                        [error.POSITION_UNAVAILABLE]: 'اطلاعات موقعیت مکانی در حال حاضر در دسترس نیست.',
+                        [error.TIMEOUT]: 'زمان درخواست برای دریافت موقعیت مکانی به پایان رسید.'
+                    };
+                    alert(messages[error.code] || 'یک خطای ناشناخته در دریافت موقعیت رخ داد.');
+                },
+                geoOptions
+            );
+        }
+        
+        function setRoutingOrigin(latlng, isUserLocation = false) {
+            routingOrigin = latlng;
+            if (originMarker) map.removeLayer(originMarker);
+
+            const iconHtml = isUserLocation
+                ? '<div class="user-location-marker"></div>'
+                : '<div style="background: #f39c12; border-radius: 50%; width: 20px; height: 20px; border: 3px solid white; box-shadow: 0 2px 10px rgba(0,0,0,0.3);"></div>';
+
+            originMarker = L.marker(latlng, {
+                icon: L.divIcon({
+                    html: iconHtml,
+                    className: '',
+                    iconSize: [isUserLocation ? 25 : 20, isUserLocation ? 25 : 20],
+                    iconAnchor: [isUserLocation ? 12.5 : 10, isUserLocation ? 12.5 : 10]
+                }),
+                draggable: true
+            }).addTo(map);
+
+            const popupText = isUserLocation ? 'مبدا: موقعیت شما' : 'مبدا انتخابی';
+            originMarker.bindPopup(`<div style="text-align: center;"><strong>${popupText}</strong></div>`).openPopup();
+            
+            originMarker.on('dragend', function(event) { routingOrigin = event.target.getLatLng(); });
+        }
+
+
+        function showRoute(farmLat, farmLng) {
+            showLoading(true);
+            DOMElements.routeSummaryCard.style.display = 'none';
+
+            if (routingControl) {
+                map.removeControl(routingControl);
+            }
+            
+            routingControl = L.Routing.control({
+                waypoints: [ routingOrigin, L.latLng(farmLat, farmLng) ],
+                routeWhileDragging: false,
+                addWaypoints: false,
+                draggableWaypoints: false,
+                show: false, 
+                lineOptions: {
+                    styles: [{ color: 'var(--primary-color)', weight: 6, opacity: 0.8 }]
+                },
+                createMarker: () => null,
+                router: new L.Routing.osrmv1({ 
+                    serviceUrl: 'https://router.project-osrm.org/route/v1',
+                })
+            }).addTo(map);
+
+            routingControl.on('routesfound', function(e) {
+                showLoading(false);
+                const summary = e.routes[0].summary;
+                const distance = (summary.totalDistance / 1000).toFixed(1);
+                const time = Math.round(summary.totalTime / 60);
+
+                DOMElements.routeDistanceEl.textContent = `${distance} کیلومتر`;
+                DOMElements.routeTimeEl.textContent = `حدود ${time} دقیقه`;
+                DOMElements.routeSummaryCard.style.display = 'block';
+            });
+            
+            routingControl.on('routingerror', function(e) {
+                showLoading(false);
+                console.error("Routing Error:", e.error);
+                alert('خطا در مسیریابی. لطفا اتصال اینترنت خود را بررسی کرده و مجددا تلاش کنید.');
+            });
+        }
+
+        // Initialize dashboard
+        document.addEventListener('DOMContentLoaded', () => {
+            initMap();
+            setupEventListeners();
+        });
+    </script>
+</body>
+</html>
+<!-- partial -->
+  
+</body>
+</html>
